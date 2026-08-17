@@ -1,0 +1,39 @@
+import * as v from "valibot";
+
+export const productFormSchema = v.pipe(
+  v.object({
+    name: v.pipe(v.string(), v.trim(), v.minLength(1, "Product name is required.")),
+    sku: v.pipe(v.string(), v.trim()),
+    category_id: v.string(),
+    price: v.string(),
+    description: v.pipe(v.string(), v.trim()),
+    status: v.picklist(["active", "inactive"]),
+  }),
+  v.rawCheck(({ dataset, addIssue }) => {
+    if (!dataset.typed) {
+      return;
+    }
+
+    const form = dataset.value;
+
+    if (form.price.trim() === "") {
+      addIssue({ message: "Selling price is required." });
+    }
+
+    if (form.category_id === "") {
+      addIssue({ message: "Category is required." });
+    }
+
+    if (numberValue(form.price) < 0) {
+      addIssue({ message: "Selling price cannot be negative." });
+    }
+  }),
+  v.transform((form) => ({
+    name: form.name,
+    sku: form.sku || null,
+    category_id: Number(form.category_id),
+    price: form.price.trim(),
+    description: form.description || null,
+    status: form.status,
+  })),
+);
