@@ -1,5 +1,5 @@
 import type { BusinessSettings } from "~/features/settings/types/settingsTypes";
-import type { ProductLineForm } from "../types/saleFormTypes";
+import type { PaymentLineForm, ProductLineForm } from "../types/saleFormTypes";
 
 export function newProductLine() {
   return {
@@ -10,6 +10,16 @@ export function newProductLine() {
     unit_price: "",
     discount_amount: "0",
     notes: "",
+  };
+}
+
+export function newPaymentLine(amount = ""): PaymentLineForm {
+  return {
+    id: randomReadableId("payment-"),
+    method: "cash",
+    amount,
+    provider: "",
+    reference: "",
   };
 }
 

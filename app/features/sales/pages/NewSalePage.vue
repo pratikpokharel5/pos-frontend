@@ -3,24 +3,33 @@ import * as v from "valibot";
 import { Plus, Printer, RotateCcw, Save, Trash2 } from "@lucide/vue";
 
 import { productsApi } from "~/features/products/api/productsApi";
-import type { Product } from "~/features/products/types/productTypes";
 import { customersApi } from "~/features/customers/api/customersApi";
-import type { Customer } from "~/features/customers/types/customerTypes";
 import { settingsApi } from "~/features/settings/api/settingsApi";
+import type { Product } from "~/features/products/types/productTypes";
+import type { Customer } from "~/features/customers/types/customerTypes";
 import type { BusinessSettings } from "~/features/settings/types/settingsTypes";
 import { salesApi } from "../api/salesApi";
-import type { CustomerMode, PaymentMethod, Sale } from "../types/saleTypes";
-import type { NewCustomerForm, ProductLineForm } from "../types/saleFormTypes";
+import type { CustomerMode, Sale } from "../types/saleTypes";
+import type {
+  HeldFormDetails,
+  NewCustomerForm,
+  PaymentLineForm,
+  ProductLineForm,
+} from "../types/saleFormTypes";
 import {
   calculateSaleTotals,
   defaultTaxRate,
   lineGrandTotal,
   lineTotal,
   maxPercentValue,
+  newPaymentLine,
   newProductLine,
+  roundCurrency,
 } from "../utils/saleUtils";
 import { saleFormSchema } from "../validations/saleValidation";
 
+import HeldSaleButtonGroup from "../components/HeldSaleButtonGroup.vue";
+import HeldSaleDialog from "../components/HeldSaleDialog.vue";
 import SaleInvoice from "../components/SaleInvoice.vue";
 
 const products = ref<Product[]>([]);
@@ -32,23 +41,41 @@ const newCustomer = ref<NewCustomerForm>({ name: "", phone: "" });
 const productLines = ref<ProductLineForm[]>([newProductLine()]);
 const discount = ref("0");
 const taxRate = ref("0");
-const paymentMethod = ref<PaymentMethod>("cash");
-const provider = ref("");
-const reference = ref("");
+const paymentLines = ref<PaymentLineForm[]>([newPaymentLine()]);
 const notes = ref("");
 const loading = ref(true);
 const saving = ref(false);
+const holding = ref(false);
 const error = ref("");
+const success = ref("");
 const createdSale = ref<Sale | null>(null);
+const holdDialogOpen = ref(false);
 
 const taxEnabled = computed(() => Boolean(settings.value?.tax_enabled));
+
 const totals = computed(() =>
   calculateSaleTotals(productLines.value, discount.value, taxRate.value),
 );
 
+const paymentTotal = computed(() =>
+  roundCurrency(paymentLines.value.reduce((sum, payment) => sum + numberValue(payment.amount), 0)),
+);
+
+const paymentBalance = computed(() => roundCurrency(totals.value.grandTotal - paymentTotal.value));
+
 onMounted(() => {
   loadSaleData();
 });
+
+watch(
+  () => totals.value.grandTotal,
+  (grandTotal) => {
+    if (paymentLines.value.length === 1) {
+      // @ts-expect-error
+      paymentLines.value[0].amount = String(grandTotal);
+    }
+  },
+);
 
 async function loadSaleData() {
   try {
@@ -93,23 +120,43 @@ function removeProductLine(id: string) {
   productLines.value = productLines.value.filter((line) => line.id !== id);
 }
 
-function resetForm() {
+function updatePaymentLine(id: string, patch: Partial<PaymentLineForm>) {
+  paymentLines.value = paymentLines.value.map((line) =>
+    line.id === id ? { ...line, ...patch } : line,
+  );
+}
+
+function updatePaymentMethod(id: string, method: string) {
+  if (method === "cash" || method === "online") {
+    updatePaymentLine(id, { method });
+  }
+}
+
+function addPaymentLine() {
+  paymentLines.value.push(newPaymentLine());
+}
+
+function removePaymentLine(id: string) {
+  paymentLines.value = paymentLines.value.filter((line) => line.id !== id);
+}
+
+function resetForm(message = "") {
   customerMode.value = "walk-in";
   customerId.value = "";
   newCustomer.value = { name: "", phone: "" };
   productLines.value = [newProductLine()];
   discount.value = "0";
   taxRate.value = defaultTaxRate(settings.value);
-  paymentMethod.value = "cash";
-  provider.value = "";
-  reference.value = "";
+  paymentLines.value = [newPaymentLine()];
   notes.value = "";
   error.value = "";
+  success.value = message;
   createdSale.value = null;
 }
 
-async function submit() {
+async function saveSale(status: "completed" | "held") {
   error.value = "";
+  success.value = "";
 
   const result = v.safeParse(saleFormSchema, {
     customerMode: customerMode.value,
@@ -119,9 +166,8 @@ async function submit() {
     discount: discount.value,
     taxRate: taxRate.value,
     taxEnabled: taxEnabled.value,
-    paymentMethod: paymentMethod.value,
-    provider: provider.value,
-    reference: reference.value,
+    saleStatus: status,
+    paymentLines: paymentLines.value,
     notes: notes.value,
   });
 
@@ -130,20 +176,106 @@ async function submit() {
     return;
   }
 
-  saving.value = true;
+  saving.value = status === "completed";
+  holding.value = status === "held";
 
   try {
     const response = await salesApi.create(result.output);
-    createdSale.value = response.data;
+
+    if (status === "completed") {
+      createdSale.value = response.data;
+      return;
+    }
+
+    resetForm(`Sale ${response.data.invoice_number} has been held.`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to save sale.";
   } finally {
     saving.value = false;
+    holding.value = false;
   }
+}
+
+function submit() {
+  saveSale("completed");
+}
+
+function holdSale() {
+  saveSale("held");
+}
+
+function saleDiscountPercent(sale: Sale) {
+  const subtotal = numberValue(sale.subtotal);
+
+  if (subtotal <= 0) {
+    return "0";
+  }
+
+  return String(roundCurrency((numberValue(sale.discount_amount) / subtotal) * 100));
+}
+
+function lineDiscountPercent(line: Sale["items"][number]) {
+  const subtotal = numberValue(line.quantity) * numberValue(line.unit_price);
+
+  if (subtotal <= 0) {
+    return "0";
+  }
+
+  return String(roundCurrency((numberValue(line.discount_amount) / subtotal) * 100));
+}
+
+function restoreHeldSale(sale: Sale) {
+  const formDetails = sale.additional_details as HeldFormDetails | null;
+  const heldForm = formDetails?.held_form;
+
+  if (sale.customer && !customers.value.some((customer) => customer.id === sale.customer?.id)) {
+    customers.value.push(sale.customer);
+  }
+
+  customerMode.value = heldForm?.customerMode ?? (sale.customer_id ? "existing" : "walk-in");
+  customerId.value = heldForm?.customerId ?? (sale.customer_id ? String(sale.customer_id) : "");
+  newCustomer.value = heldForm?.newCustomer ?? { name: "", phone: "" };
+
+  productLines.value = (sale.items ?? []).map((line) => ({
+    id: randomReadableId("line-"),
+    product_id: line.product_id ? String(line.product_id) : "",
+    item_name: line.product_id ? "" : line.item_name,
+    quantity: line.quantity,
+    unit_price: line.unit_price,
+    discount_amount: lineDiscountPercent(line),
+    notes: line.notes ?? "",
+  }));
+
+  discount.value = heldForm?.discount ?? saleDiscountPercent(sale);
+  taxRate.value = heldForm?.taxRate ?? sale.tax_rate;
+  paymentLines.value = heldForm?.paymentLines?.length
+    ? heldForm.paymentLines
+    : (sale.payments ?? []).map((payment) => ({
+        id: randomReadableId("payment-"),
+        method: payment.method,
+        amount: payment.amount,
+        provider: payment.provider ?? "",
+        reference: payment.transaction_reference ?? "",
+      }));
+
+  if (!productLines.value.length) {
+    productLines.value = [newProductLine()];
+  }
+
+  if (!paymentLines.value.length) {
+    paymentLines.value = [newPaymentLine(String(numberValue(sale.grand_total)))];
+  }
+
+  notes.value = sale.notes ?? "";
+  error.value = "";
+  success.value = `Sale ${sale.invoice_number} has been unheld.`;
+  createdSale.value = null;
 }
 </script>
 
 <template>
+  <HeldSaleDialog v-model="holdDialogOpen" @resume="restoreHeldSale" />
+
   <LoadingState label="Loading Sale Screen..." v-if="loading" />
 
   <section v-else-if="createdSale">
@@ -175,14 +307,20 @@ async function submit() {
     >
       <template #actions>
         <div class="flex flex-wrap gap-2.5">
-          <Button type="button" :disabled="saving" @click="resetForm">
+          <Button type="button" :disabled="saving || holding" @click="resetForm()">
             <RotateCcw :size="17" />
             Reset
           </Button>
 
-          <Button type="submit" variant="primary" :disabled="saving">
+          <HeldSaleButtonGroup
+            :disabled="saving || holding"
+            @hold="holdSale"
+            @view="holdDialogOpen = true"
+          />
+
+          <Button type="submit" variant="primary" :disabled="saving || holding">
             <Save :size="18" />
-            Save Sale
+            {{ saving ? "Saving..." : "Save Sale" }}
           </Button>
         </div>
       </template>
@@ -190,7 +328,9 @@ async function submit() {
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
 
-    <FormFieldset :submitting="saving">
+    <Alert class="mb-4" variant="success" :message="success" auto-dismiss v-if="success" />
+
+    <FormFieldset :submitting="saving || holding">
       <section class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div class="rounded-app border-line bg-surface shadow-app border">
           <div class="border-line flex justify-between gap-3 border-b p-4 max-md:grid">
@@ -326,18 +466,65 @@ async function submit() {
           <div class="rounded-app border-line bg-surface shadow-app border">
             <div class="border-line border-b p-4">
               <h3 class="m-0 text-base font-black">Payment</h3>
-              <p class="text-muted mt-1 mb-0 text-sm">Single payment for MVP.</p>
+              <p class="text-muted mt-1 mb-0 text-sm">Split payment across cash and online.</p>
             </div>
 
             <div class="grid gap-3 p-4">
-              <SelectField label="Method" v-model="paymentMethod">
-                <option value="cash">Cash</option>
-                <option value="online">Online</option>
-              </SelectField>
+              <div class="grid gap-2.5">
+                <div
+                  class="rounded-app border-line bg-surface-soft grid items-end gap-2.5 border p-3"
+                  v-for="payment in paymentLines"
+                  :key="payment.id"
+                >
+                  <div class="grid items-end gap-2.5 sm:grid-cols-[1fr_1fr_auto]">
+                    <SelectField
+                      label="Method"
+                      :model-value="payment.method"
+                      @update:model-value="updatePaymentMethod(payment.id, $event)"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="online">Online</option>
+                    </SelectField>
 
-              <InputField label="Provider" v-model="provider" />
+                    <InputField
+                      label="Amount"
+                      inputmode="decimal"
+                      :model-value="payment.amount"
+                      @update:model-value="updatePaymentLine(payment.id, { amount: $event })"
+                    />
 
-              <InputField label="Reference" v-model="reference" />
+                    <Button
+                      type="button"
+                      size="icon"
+                      title="Remove payment"
+                      :disabled="paymentLines.length === 1"
+                      @click="removePaymentLine(payment.id)"
+                    >
+                      <span class="sr-only">Remove payment</span>
+                      <Trash2 :size="16" />
+                    </Button>
+                  </div>
+
+                  <div class="grid gap-2.5 sm:grid-cols-2" v-if="payment.method === 'online'">
+                    <InputField
+                      label="Provider"
+                      :model-value="payment.provider"
+                      @update:model-value="updatePaymentLine(payment.id, { provider: $event })"
+                    />
+
+                    <InputField
+                      label="Reference"
+                      :model-value="payment.reference"
+                      @update:model-value="updatePaymentLine(payment.id, { reference: $event })"
+                    />
+                  </div>
+                </div>
+
+                <Button type="button" @click="addPaymentLine">
+                  <Plus :size="17" />
+                  Add Payment
+                </Button>
+              </div>
 
               <div class="grid items-start gap-3 sm:grid-cols-2">
                 <InputField
@@ -387,6 +574,16 @@ async function submit() {
               <div class="border-line flex justify-between gap-3 border-t pt-2 text-lg">
                 <span>Grand total</span>
                 <strong>{{ money(totals.grandTotal) }}</strong>
+              </div>
+
+              <div class="flex justify-between gap-3">
+                <span class="text-muted">Paid</span>
+                <b>{{ money(paymentTotal) }}</b>
+              </div>
+
+              <div class="flex justify-between gap-3">
+                <span class="text-muted">Balance</span>
+                <b>{{ money(paymentBalance) }}</b>
               </div>
             </div>
           </div>

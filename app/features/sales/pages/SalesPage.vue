@@ -8,7 +8,7 @@ import type { PaymentMethod, Sale } from "../types/saleTypes";
 
 import SaleInvoice from "../components/SaleInvoice.vue";
 
-type SaleStatusFilter = "" | "completed" | "voided" | "refunded";
+type SaleStatusFilter = "" | "completed" | "held" | "voided" | "refunded";
 type PaymentMethodFilter = "" | PaymentMethod;
 
 const sales = ref<Sale[]>([]);
@@ -129,7 +129,7 @@ onMounted(() => {
     <PageHeader
       eyebrow="Sales"
       title="Sales History"
-      description="Search invoices, review payment details, reprint invoices, or void a sale."
+      description="Search invoices, review payment details, view held sales, reprint invoices, or void a sale."
     />
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
@@ -163,6 +163,7 @@ onMounted(() => {
         <SelectField label="Status" v-model="status">
           <option value="">All statuses</option>
           <option value="completed">Completed</option>
+          <option value="held">Held</option>
           <option value="voided">Voided</option>
           <option value="refunded">Refunded</option>
         </SelectField>
@@ -225,8 +226,8 @@ onMounted(() => {
 
             <template #cell-actions="{ row }">
               <div class="flex gap-2">
-                <Button type="button" size="icon" title="View invoice" @click="viewSale(row)">
-                  <span class="sr-only">View invoice</span>
+                <Button type="button" size="icon" title="View sale" @click="viewSale(row)">
+                  <span class="sr-only">View sale</span>
                   <Eye :size="16" />
                 </Button>
 
@@ -260,7 +261,7 @@ onMounted(() => {
               Clear
             </Button>
 
-            <Button :to="`/sales/${selected.id}/print`">
+            <Button :to="`/sales/${selected.id}/print`" v-if="selected.status === 'completed'">
               <Printer :size="17" />
               Print
             </Button>

@@ -110,7 +110,7 @@ async function submit() {
       </template>
     </PageHeader>
 
-    <Alert class="mb-4" variant="success" v-if="saved">Settings saved.</Alert>
+    <Alert class="mb-4" variant="success" auto-dismiss v-if="saved">Settings saved.</Alert>
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
 

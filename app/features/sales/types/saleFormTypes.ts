@@ -12,3 +12,22 @@ export type NewCustomerForm = {
   name: string;
   phone: string;
 };
+
+export type PaymentLineForm = {
+  id: string;
+  method: "cash" | "online";
+  amount: string;
+  provider: string;
+  reference: string;
+};
+
+export type HeldFormDetails = {
+  held_form?: {
+    customerMode?: "walk-in" | "existing" | "new";
+    customerId?: string;
+    newCustomer?: NewCustomerForm;
+    discount?: string;
+    taxRate?: string;
+    paymentLines?: PaymentLineForm[];
+  };
+};

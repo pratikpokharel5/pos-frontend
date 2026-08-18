@@ -3,12 +3,18 @@ const props = withDefaults(
   defineProps<{
     message?: string;
     variant?: "info" | "success" | "error";
+    autoDismiss?: boolean;
   }>(),
   {
     message: "",
     variant: "info",
+    autoDismiss: false,
   },
 );
+
+let dismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+const visible = ref(true);
 
 const classes = computed(() =>
   cn(
@@ -20,10 +26,34 @@ const classes = computed(() =>
 );
 
 const role = computed(() => (props.variant === "error" ? "alert" : "status"));
+
+function startDismissTimer() {
+  if (dismissTimer) {
+    clearTimeout(dismissTimer);
+  }
+
+  visible.value = true;
+
+  if (!props.autoDismiss) {
+    return;
+  }
+
+  dismissTimer = setTimeout(() => {
+    visible.value = false;
+  }, 3000);
+}
+
+watch(() => [props.message, props.autoDismiss], startDismissTimer, { immediate: true });
+
+onBeforeUnmount(() => {
+  if (dismissTimer) {
+    clearTimeout(dismissTimer);
+  }
+});
 </script>
 
 <template>
-  <div :role="role" :class="classes">
+  <div :role="role" :class="classes" v-if="visible">
     <slot>{{ message }}</slot>
   </div>
 </template>

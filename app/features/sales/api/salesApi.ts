@@ -23,4 +23,9 @@ export const salesApi = {
     apiFetch<void>(`/sales/${id}/void`, {
       method: "POST",
     }),
+
+  unhold: (id: number) =>
+    apiFetch<void>(`/sales/${id}/hold`, {
+      method: "DELETE",
+    }),
 };

@@ -3,6 +3,7 @@ import { calculateSaleTotals, lineDiscountAmount, roundCurrency } from "../utils
 
 const customerModeSchema = v.picklist(["walk-in", "existing", "new"]);
 const paymentMethodSchema = v.picklist(["cash", "online"]);
+const saleStatusSchema = v.picklist(["completed", "held"]);
 
 export const saleFormSchema = v.pipe(
   v.object({
@@ -26,9 +27,16 @@ export const saleFormSchema = v.pipe(
     discount: v.string(),
     taxRate: v.string(),
     taxEnabled: v.boolean(),
-    paymentMethod: paymentMethodSchema,
-    provider: v.string(),
-    reference: v.string(),
+    saleStatus: saleStatusSchema,
+    paymentLines: v.array(
+      v.object({
+        id: v.string(),
+        method: paymentMethodSchema,
+        amount: v.string(),
+        provider: v.string(),
+        reference: v.string(),
+      }),
+    ),
     notes: v.string(),
   }),
   v.rawCheck(({ dataset, addIssue }) => {
@@ -90,10 +98,6 @@ export const saleFormSchema = v.pipe(
       });
     }
 
-    if (!form.paymentMethod) {
-      addIssue({ message: "Payment method is required." });
-    }
-
     const discount = numberValue(form.discount);
     const taxRate = numberValue(form.taxRate);
 
@@ -104,11 +108,34 @@ export const saleFormSchema = v.pipe(
     if (taxRate < 0 || taxRate > 100) {
       addIssue({ message: "Tax Rate must be between 0 and 100%." });
     }
+
+    if (form.saleStatus === "completed") {
+      if (!form.paymentLines.length) {
+        addIssue({ message: "Add at least one payment before saving the sale." });
+      }
+
+      form.paymentLines.forEach((payment, index) => {
+        if (numberValue(payment.amount) <= 0) {
+          addIssue({ message: `Payment ${index + 1}: Amount must be greater than 0.` });
+        }
+      });
+
+      const totals = calculateSaleTotals(form.productLines, form.discount, form.taxRate);
+      const paymentTotal = form.paymentLines.reduce(
+        (sum, payment) => sum + numberValue(payment.amount),
+        0,
+      );
+
+      if (roundCurrency(paymentTotal) !== roundCurrency(totals.grandTotal)) {
+        addIssue({ message: "Payment total must match the sale grand total." });
+      }
+    }
   }),
   v.transform((form) => {
     const totals = calculateSaleTotals(form.productLines, form.discount, form.taxRate);
 
     return {
+      status: form.saleStatus,
       customer_id:
         form.customerMode === "existing" && form.customerId ? Number(form.customerId) : null,
       customer:
@@ -121,6 +148,19 @@ export const saleFormSchema = v.pipe(
       discount_amount: String(totals.saleDiscount),
       tax_rate: form.taxEnabled ? form.taxRate.trim() : "0",
       notes: form.notes.trim() || null,
+      additional_details:
+        form.saleStatus === "held"
+          ? {
+              held_form: {
+                customerMode: form.customerMode,
+                customerId: form.customerId,
+                newCustomer: form.newCustomer,
+                discount: form.discount,
+                taxRate: form.taxRate,
+                paymentLines: form.paymentLines,
+              },
+            }
+          : null,
       items: form.productLines.map((line) => ({
         product_id: line.product_id ? Number(line.product_id) : null,
         item_name: line.item_name.trim() || null,
@@ -129,14 +169,22 @@ export const saleFormSchema = v.pipe(
         discount_amount: String(lineDiscountAmount(line)),
         notes: line.notes.trim() || null,
       })),
-      payments: [
-        {
-          method: form.paymentMethod,
-          amount: String(roundCurrency(totals.grandTotal)),
-          provider: form.provider.trim() || null,
-          transaction_reference: form.reference.trim() || null,
-        },
-      ],
+      payments:
+        form.saleStatus === "completed"
+          ? form.paymentLines.map((payment) => ({
+              method: payment.method,
+              amount: payment.amount.trim(),
+              provider: payment.provider.trim() || null,
+              transaction_reference: payment.reference.trim() || null,
+            }))
+          : form.paymentLines
+              .filter((payment) => numberValue(payment.amount) > 0)
+              .map((payment) => ({
+                method: payment.method,
+                amount: payment.amount.trim(),
+                provider: payment.provider.trim() || null,
+                transaction_reference: payment.reference.trim() || null,
+              })),
     };
   }),
 );

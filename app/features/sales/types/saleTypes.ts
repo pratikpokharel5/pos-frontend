@@ -37,7 +37,7 @@ export type Sale = {
   invoice_number: string;
   customer_id: number | null;
   customer?: Customer | null;
-  status: "completed" | "voided" | "refunded";
+  status: "completed" | "held" | "voided" | "refunded";
   subtotal: string;
   discount_amount: string;
   tax_rate: string;
@@ -51,6 +51,7 @@ export type Sale = {
 };
 
 export type SalePayload = {
+  status?: "completed" | "held";
   customer_id?: number | null;
   customer?: CustomerPayload | null;
   discount_amount?: string;
