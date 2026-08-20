@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CategoryForm } from "../types";
+import type { CategoryForm } from "../types/categoryTypes";
 
 const form = defineModel<CategoryForm>({ required: true });
 </script>
@@ -15,6 +15,6 @@ const form = defineModel<CategoryForm>({ required: true });
       </SelectField>
     </div>
 
-    <TextareaField label="Description" :rows="4" v-model="form.description" />
+    <Textarea label="Description" :rows="4" v-model="form.description" />
   </div>
 </template>

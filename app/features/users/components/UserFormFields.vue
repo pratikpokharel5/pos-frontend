@@ -11,12 +11,9 @@ const form = defineModel<UserForm>({ required: true });
 
       <InputField label="Email" type="email" inputmode="email" v-model="form.email" />
 
-      <InputPassword label="Password" autocomplete="new-password" v-model="form.password" />
+      <InputField label="Phone" inputmode="tel" v-model="form.phone" />
 
-      <SelectField label="Status" v-model="form.status">
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </SelectField>
+      <InputPassword label="Password" autocomplete="new-password" v-model="form.password" />
     </div>
   </div>
 </template>

@@ -49,12 +49,21 @@ const topProductHeaders = [
   },
 ];
 
+onMounted(() => {
+  loadReports();
+});
+
+watch(range, () => {
+  loadReports();
+});
+
 async function loadReports() {
   loading.value = true;
   error.value = "";
 
   try {
     const query = queryForRange(range.value);
+
     const [salesSummary, paymentSummary, productSummary] = await Promise.all([
       reportsApi.getSalesSummary(query),
       reportsApi.getPaymentSummary(query),
@@ -79,16 +88,6 @@ function paymentMethodClass(method: string) {
     method !== "cash" && method !== "online" && "bg-warning-soft text-warning",
   );
 }
-
-watch(
-  range,
-  () => {
-    loadReports();
-  },
-  {
-    immediate: true,
-  },
-);
 </script>
 
 <template>
@@ -125,8 +124,11 @@ watch(
           :value="money(summary.revenue)"
           :detail="`${summary.invoice_count} invoices`"
         />
+
         <StatCard label="Subtotal" :value="money(summary.subtotal)" />
+
         <StatCard label="Discounts" :value="money(summary.discount_total)" />
+
         <StatCard label="Tax" :value="money(summary.tax_total)" />
       </section>
 
@@ -173,7 +175,7 @@ watch(
             <DataTable
               :headers="topProductHeaders"
               :data="topProducts"
-              empty-title="No product sales"
+              empty-title="No Product Sales"
               empty-description="Top products will appear after item sales exist in this range."
             >
               <template #cell-revenue="{ row }">

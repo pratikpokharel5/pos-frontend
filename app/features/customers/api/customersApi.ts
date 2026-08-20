@@ -1,5 +1,5 @@
 import type { ApiCollection, ApiResource, Query } from "~/types";
-import type { Customer, CustomerPayload } from "../types/customerTypes";
+import type { Customer, CustomerPayload, CustomerStatusPayload } from "../types/customerTypes";
 
 export const customersApi = {
   list: (query?: Query) =>
@@ -25,8 +25,9 @@ export const customersApi = {
       body: payload,
     }),
 
-  archive: (id: number) =>
-    apiFetch<void>(`/customers/${id}`, {
-      method: "DELETE",
+  updateStatus: (id: number, payload: CustomerStatusPayload) =>
+    apiFetch<ApiResource<Customer>>(`/customers/${id}/status`, {
+      method: "PATCH",
+      body: payload,
     }),
 };

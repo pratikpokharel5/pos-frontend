@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Pen, Plus, Search, Upload } from "@lucide/vue";
 
-import { categoriesApi } from "../api";
-import type { Category, CategoryImportResult } from "../types";
+import { categoriesApi } from "../api/categoriesApi";
+import type { Category, CategoryImportResult } from "../types/categoryTypes";
 
 const categories = ref<Category[]>([]);
 const search = ref("");

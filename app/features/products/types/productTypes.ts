@@ -1,4 +1,4 @@
-import type { Category } from "~/features/categories/types";
+import type { Category } from "~/features/categories/types/categoryTypes";
 
 export type Status = "active" | "inactive";
 

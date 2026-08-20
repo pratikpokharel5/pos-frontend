@@ -36,7 +36,7 @@ async function loadInvoice() {
 
   try {
     const [saleResponse, settingsResponse] = await Promise.all([
-      salesApi.get(id),
+      salesApi.invoice(id),
       settingsApi.get(),
     ]);
 

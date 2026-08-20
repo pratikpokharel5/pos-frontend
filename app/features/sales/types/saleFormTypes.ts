@@ -24,10 +24,19 @@ export type PaymentLineForm = {
 export type HeldFormDetails = {
   held_form?: {
     customerMode?: "walk-in" | "existing" | "new";
-    customerId?: string;
-    newCustomer?: NewCustomerForm;
-    discount?: string;
-    taxRate?: string;
-    paymentLines?: PaymentLineForm[];
+    customerId?: string | null;
+    newCustomer?: {
+      name?: string | null;
+      phone?: string | null;
+    };
+    discount?: string | null;
+    taxRate?: string | null;
+    paymentLines?: Array<{
+      id?: string | null;
+      method?: "cash" | "online" | null;
+      amount?: string | null;
+      provider?: string | null;
+      reference?: string | null;
+    }>;
   };
 };

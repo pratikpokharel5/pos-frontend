@@ -21,23 +21,23 @@ withDefaults(
 
 <template>
   <div class="rounded-app border-line overflow-hidden border">
-    <div v-if="loading" class="p-4">
+    <div class="p-4" v-if="loading">
       <LoadingState :label="loadingLabel" />
     </div>
 
-    <div v-else-if="!data || data.length === 0" class="p-4">
+    <div class="p-4" v-else-if="!data || data.length === 0">
       <EmptyState :title="emptyTitle" :description="emptyDescription" />
     </div>
 
     <div v-else class="overflow-x-auto">
-      <table class="bg-surface w-full min-w-[620px] border-collapse md:min-w-190">
+      <table class="bg-surface w-full border-collapse md:min-w-190">
         <thead>
           <tr>
             <th
-              v-for="header in headers"
-              :key="header.key"
               scope="col"
               class="border-line bg-surface-soft text-muted border-b px-3 py-3 text-left align-top text-xs font-extrabold uppercase"
+              v-for="header in headers"
+              :key="header.key"
             >
               {{ header.label }}
             </th>
@@ -47,14 +47,14 @@ withDefaults(
         <tbody>
           <tr v-for="(row, rowIndex) in data" :key="row.id ?? `row-${rowIndex}`">
             <td
-              v-for="header in headers"
-              :key="header.key"
               :class="
                 cn(
                   'text-text px-3 py-3 text-left align-top text-sm',
                   rowIndex !== data.length - 1 && 'border-line border-b',
                 )
               "
+              v-for="header in headers"
+              :key="header.key"
             >
               <slot
                 :name="`cell-${header.key}`"

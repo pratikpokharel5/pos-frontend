@@ -3,14 +3,14 @@ import { safeParse } from "valibot";
 import { RotateCcw, Save } from "@lucide/vue";
 
 import { settingsFormSchema } from "../validations/settingsValidation";
-import type { BusinessSettings } from "../types/settingsTypes";
+import type { BusinessSettings, BusinessSettingsForm } from "../types/settingsTypes";
 
 import SettingsFormFields from "../components/SettingsFormFields.vue";
 
 const settingsStore = useSettingsStore();
 
-const settings = ref<BusinessSettings | null>(null);
-const initialSettings = ref<BusinessSettings | null>(null);
+const form = ref<BusinessSettingsForm | null>(null);
+const initialForm = ref<BusinessSettingsForm | null>(null);
 const saving = ref(false);
 const saved = ref(false);
 const error = ref("");
@@ -19,49 +19,49 @@ onMounted(() => {
   loadForm();
 });
 
+function settingsToForm(settings: BusinessSettings): BusinessSettingsForm {
+  return {
+    business_name: settings.business_name,
+    logo: settings.logo ?? "",
+    address: settings.address ?? "",
+    phone: settings.phone,
+    email: settings.email ?? "",
+    tax_enabled: settings.tax_enabled ? "yes" : "no",
+    default_tax_rate: String(settings.default_tax_rate),
+    online_payment_enabled: settings.online_payment_enabled ? "yes" : "no",
+  };
+}
+
 async function loadForm() {
   try {
     const response = settingsStore.settings ?? (await settingsStore.fetchSettings());
+    const settingsForm = settingsToForm(response);
 
-    settings.value = { ...response };
-    initialSettings.value = { ...response };
+    form.value = { ...settingsForm };
+    initialForm.value = { ...settingsForm };
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to load settings.";
   }
 }
 
 function resetForm() {
-  if (initialSettings.value) {
-    settings.value = { ...initialSettings.value };
+  if (initialForm.value) {
+    form.value = { ...initialForm.value };
   }
 
   saved.value = false;
   error.value = "";
 }
 
-function maxPercentValue(value: string) {
-  if (value === "") {
-    return 0;
-  }
-
-  const numericValue = Number(value);
-
-  if (!Number.isFinite(numericValue) || numericValue <= 100) {
-    return Math.max(Math.round(numericValue), 0);
-  }
-
-  return 100;
-}
-
 async function submit() {
-  if (!settings.value || saving.value) {
+  if (!form.value || saving.value) {
     return;
   }
 
   saved.value = false;
   error.value = "";
 
-  const validation = safeParse(settingsFormSchema, settings.value);
+  const validation = safeParse(settingsFormSchema, form.value);
 
   if (!validation.success) {
     error.value = getFormValidationErrors(validation.issues);
@@ -72,9 +72,10 @@ async function submit() {
 
   try {
     const response = await settingsStore.saveSettings(validation.output);
+    const settingsForm = settingsToForm(response);
 
-    settings.value = { ...response };
-    initialSettings.value = { ...response };
+    form.value = { ...settingsForm };
+    initialForm.value = { ...settingsForm };
     saved.value = true;
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to save settings.";
@@ -85,9 +86,9 @@ async function submit() {
 </script>
 
 <template>
-  <ErrorState :message="error" v-if="error && !settings" />
+  <ErrorState :message="error" v-if="error && !form" />
 
-  <LoadingState label="Loading settings..." v-else-if="!settings" />
+  <LoadingState label="Loading settings..." v-else-if="!form" />
 
   <form @submit.prevent="submit" v-else>
     <PageHeader
@@ -110,12 +111,14 @@ async function submit() {
       </template>
     </PageHeader>
 
-    <Alert class="mb-4" variant="success" auto-dismiss v-if="saved">Settings saved.</Alert>
+    <Alert class="mb-4" variant="success" auto-dismiss v-if="saved">
+      Business settings saved successfully.
+    </Alert>
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
 
     <FormFieldset :submitting="saving">
-      <SettingsFormFields :max-percent-value="maxPercentValue" v-model="settings" />
+      <SettingsFormFields v-model="form" />
     </FormFieldset>
   </form>
 </template>

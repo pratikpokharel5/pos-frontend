@@ -2,9 +2,9 @@
 import { safeParse } from "valibot";
 import { ArrowLeft, RotateCcw, Save } from "@lucide/vue";
 
-import { categoriesApi } from "../api/index.ts";
+import { categoriesApi } from "../api/categoriesApi";
 import { categoryFormSchema } from "../validations/categoryValidation";
-import { emptyCategoryForm } from "../types/index.ts";
+import { emptyCategoryForm } from "../types/categoryTypes";
 
 import CategoryFormFields from "../components/CategoryFormFields.vue";
 

@@ -5,6 +5,10 @@ const customerModeSchema = v.picklist(["walk-in", "existing", "new"]);
 const paymentMethodSchema = v.picklist(["cash", "online"]);
 const saleStatusSchema = v.picklist(["completed", "held"]);
 
+function numericValue(value: string) {
+  return Number(value.trim() || 0);
+}
+
 export const saleFormSchema = v.pipe(
   v.object({
     customerMode: customerModeSchema,
@@ -52,12 +56,17 @@ export const saleFormSchema = v.pipe(
 
     form.productLines.forEach((line, index) => {
       const lineLabel = `Item ${index + 1}`;
+      const quantity = numericValue(line.quantity);
+      const unitPrice = numericValue(line.unit_price);
+      const lineDiscount = numericValue(line.discount_amount);
 
       if (!line.product_id && !line.item_name.trim()) {
         addIssue({ message: `${lineLabel}: Custom Item Name is required.` });
       }
 
-      if (numberValue(line.quantity) <= 0) {
+      if (!Number.isFinite(quantity)) {
+        addIssue({ message: `${lineLabel}: Qty must be a valid number.` });
+      } else if (quantity <= 0) {
         addIssue({ message: `${lineLabel}: Qty must be greater than 0.` });
       }
 
@@ -67,13 +76,15 @@ export const saleFormSchema = v.pipe(
         });
       }
 
-      if (numberValue(line.unit_price) < 0) {
+      if (!Number.isFinite(unitPrice)) {
+        addIssue({ message: `${lineLabel}: Unit Price must be a valid number.` });
+      } else if (unitPrice < 0) {
         addIssue({ message: `${lineLabel}: Unit Price cannot be negative.` });
       }
 
-      const lineDiscount = numberValue(line.discount_amount);
-
-      if (lineDiscount < 0 || lineDiscount > 100) {
+      if (!Number.isFinite(lineDiscount)) {
+        addIssue({ message: `${lineLabel}: Discount must be a valid number.` });
+      } else if (lineDiscount < 0 || lineDiscount > 100) {
         addIssue({
           message: `${lineLabel}: Discount must be between 0 and 100%.`,
         });
@@ -98,14 +109,18 @@ export const saleFormSchema = v.pipe(
       });
     }
 
-    const discount = numberValue(form.discount);
-    const taxRate = numberValue(form.taxRate);
+    const discount = numericValue(form.discount);
+    const taxRate = numericValue(form.taxRate);
 
-    if (discount < 0 || discount > 100) {
+    if (!Number.isFinite(discount)) {
+      addIssue({ message: "Sale Discount must be a valid number." });
+    } else if (discount < 0 || discount > 100) {
       addIssue({ message: "Sale Discount must be between 0 and 100%." });
     }
 
-    if (taxRate < 0 || taxRate > 100) {
+    if (!Number.isFinite(taxRate)) {
+      addIssue({ message: "Tax Rate must be a valid number." });
+    } else if (taxRate < 0 || taxRate > 100) {
       addIssue({ message: "Tax Rate must be between 0 and 100%." });
     }
 
@@ -115,7 +130,11 @@ export const saleFormSchema = v.pipe(
       }
 
       form.paymentLines.forEach((payment, index) => {
-        if (numberValue(payment.amount) <= 0) {
+        const amount = numericValue(payment.amount);
+
+        if (!Number.isFinite(amount)) {
+          addIssue({ message: `Payment ${index + 1}: Amount must be a valid number.` });
+        } else if (amount <= 0) {
           addIssue({ message: `Payment ${index + 1}: Amount must be greater than 0.` });
         }
       });
@@ -139,7 +158,10 @@ export const saleFormSchema = v.pipe(
       customer_id:
         form.customerMode === "existing" && form.customerId ? Number(form.customerId) : null,
       customer:
-        form.customerMode === "new" && form.newCustomer.name.trim() && form.newCustomer.phone.trim()
+        form.saleStatus === "completed" &&
+        form.customerMode === "new" &&
+        form.newCustomer.name.trim() &&
+        form.newCustomer.phone.trim()
           ? {
               name: form.newCustomer.name.trim(),
               phone: form.newCustomer.phone.trim(),

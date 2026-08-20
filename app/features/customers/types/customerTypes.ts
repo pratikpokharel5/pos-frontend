@@ -4,7 +4,7 @@ export type Customer = {
   id: number;
   business_id: number;
   name: string;
-  phone: string | null;
+  phone: string;
   email: string | null;
   address: string | null;
   notes: string | null;
@@ -17,16 +17,18 @@ export type CustomerForm = {
   email: string;
   address: string;
   notes: string;
-  status: Status;
 };
 
 export type CustomerPayload = {
   name: string;
-  phone?: string | null;
+  phone: string;
   email?: string | null;
   address?: string | null;
   notes?: string | null;
-  status?: Status;
+};
+
+export type CustomerStatusPayload = {
+  status: Status;
 };
 
 export const emptyCustomerForm: CustomerForm = {
@@ -35,5 +37,4 @@ export const emptyCustomerForm: CustomerForm = {
   email: "",
   address: "",
   notes: "",
-  status: "active",
 };

@@ -1,5 +1,4 @@
-import { apiFetch } from "~/composables/useApi";
-import type { DashboardSummary } from "../types";
+import type { DashboardSummary } from "../types/dashboardTypes";
 
 export const dashboardApi = {
   getSummary: () =>

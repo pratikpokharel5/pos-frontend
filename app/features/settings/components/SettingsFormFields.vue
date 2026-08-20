@@ -1,53 +1,25 @@
 <script setup lang="ts">
-import type { BusinessSettings } from "../types/settingsTypes";
+import type { BusinessSettingsForm } from "../types/settingsTypes";
 
-const props = defineProps<{
-  maxPercentValue: (value: string) => number;
-}>();
+const form = defineModel<BusinessSettingsForm>({ required: true });
 
-const settings = defineModel<BusinessSettings>({ required: true });
+function maxPercentValue(value: string) {
+  if (value === "") {
+    return "";
+  }
 
-const defaultTaxRate = computed({
-  get: () => String(settings.value.default_tax_rate ?? ""),
-  set: (value) => {
-    settings.value.default_tax_rate = props.maxPercentValue(value);
-  },
-});
+  const numericValue = Number(value);
 
-const email = computed({
-  get: () => settings.value.email ?? "",
-  set: (value) => {
-    settings.value.email = value;
-  },
-});
+  if (!Number.isFinite(numericValue)) {
+    return "";
+  }
 
-const logo = computed({
-  get: () => settings.value.logo ?? "",
-  set: (value) => {
-    settings.value.logo = value;
-  },
-});
+  if (numericValue <= 100) {
+    return String(Math.max(Math.round(numericValue), 0));
+  }
 
-const address = computed({
-  get: () => settings.value.address ?? "",
-  set: (value) => {
-    settings.value.address = value;
-  },
-});
-
-const taxEnabled = computed({
-  get: () => (settings.value.tax_enabled ? "yes" : "no"),
-  set: (value) => {
-    settings.value.tax_enabled = value === "yes";
-  },
-});
-
-const onlinePaymentEnabled = computed({
-  get: () => (settings.value.online_payment_enabled ? "yes" : "no"),
-  set: (value) => {
-    settings.value.online_payment_enabled = value === "yes";
-  },
-});
+  return "100";
+}
 </script>
 
 <template>
@@ -62,16 +34,16 @@ const onlinePaymentEnabled = computed({
 
       <div class="grid gap-3 p-4">
         <div class="grid gap-3 md:grid-cols-2">
-          <InputField label="Business Name" v-model="settings.business_name" />
+          <InputField label="Business Name" v-model="form.business_name" />
 
-          <InputField label="Phone" inputmode="tel" v-model="settings.phone" />
+          <InputField label="Phone" inputmode="tel" v-model="form.phone" />
 
-          <InputField label="Email" type="email" inputmode="email" v-model="email" />
+          <InputField label="Email" type="email" inputmode="email" v-model="form.email" />
 
-          <InputField label="Logo" v-model="logo" />
+          <InputField label="Logo" v-model="form.logo" />
         </div>
 
-        <TextareaField label="Address" :rows="4" v-model="address" />
+        <Textarea label="Address" :rows="4" v-model="form.address" />
       </div>
     </div>
 
@@ -85,20 +57,20 @@ const onlinePaymentEnabled = computed({
 
       <div class="grid gap-3 p-4">
         <div class="grid gap-3 md:grid-cols-2">
-          <SelectField label="Tax" v-model="taxEnabled">
+          <SelectField label="Tax" v-model="form.tax_enabled">
             <option value="no">Disabled</option>
             <option value="yes">Enabled</option>
           </SelectField>
 
           <InputField
             label="Default Tax Rate"
-            type="number"
             inputmode="decimal"
-            :disabled="!settings.tax_enabled"
-            v-model="defaultTaxRate"
+            :disabled="form.tax_enabled === 'no'"
+            :model-value="form.default_tax_rate"
+            @update:model-value="form.default_tax_rate = maxPercentValue($event)"
           />
 
-          <SelectField label="Online Payment" v-model="onlinePaymentEnabled">
+          <SelectField label="Online Payment" v-model="form.online_payment_enabled">
             <option value="yes">Enabled</option>
             <option value="no">Disabled</option>
           </SelectField>

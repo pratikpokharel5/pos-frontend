@@ -11,10 +11,12 @@ import UserFormFields from "../components/UserFormFields.vue";
 const form = ref({ ...emptyUserForm });
 const saving = ref(false);
 const error = ref("");
+const successMessage = ref("");
 
 function resetForm() {
   form.value = { ...emptyUserForm };
   error.value = "";
+  successMessage.value = "";
 }
 
 async function submit() {
@@ -23,6 +25,7 @@ async function submit() {
   }
 
   error.value = "";
+  successMessage.value = "";
 
   const validation = safeParse(userFormSchema, form.value);
 
@@ -35,7 +38,9 @@ async function submit() {
 
   try {
     await usersApi.create(validation.output);
-    await navigateTo("/users");
+
+    form.value = { ...emptyUserForm };
+    successMessage.value = "User has been created.";
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to save user.";
   } finally {
@@ -74,6 +79,14 @@ async function submit() {
     </PageHeader>
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
+
+    <Alert
+      class="mb-4"
+      auto-dismiss
+      variant="success"
+      :message="successMessage"
+      v-if="successMessage"
+    />
 
     <section class="rounded-app border-line bg-surface shadow-app max-w-full border">
       <FormFieldset :submitting="saving">

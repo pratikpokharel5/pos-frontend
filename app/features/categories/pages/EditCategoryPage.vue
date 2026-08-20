@@ -2,10 +2,10 @@
 import { safeParse } from "valibot";
 import { ArrowLeft, RotateCcw, Save } from "@lucide/vue";
 
-import { categoriesApi } from "../api/index.ts";
+import { categoriesApi } from "../api/categoriesApi";
 import { categoryFormSchema } from "../validations/categoryValidation";
-import { parseCategoryId } from "../utils/index.ts";
-import type { CategoryForm } from "../types/index.ts";
+import { parseCategoryId } from "../utils/categoryUtils";
+import type { CategoryForm } from "../types/categoryTypes";
 
 import CategoryFormFields from "../components/CategoryFormFields.vue";
 

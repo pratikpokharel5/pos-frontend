@@ -6,7 +6,7 @@ import type { Customer } from "../types/customerTypes";
 
 const customers = ref<Customer[]>([]);
 const search = ref("");
-const status = ref("");
+const status = ref("active");
 const loading = ref(true);
 const error = ref("");
 
@@ -37,6 +37,10 @@ const tableHeaders = [
   },
 ];
 
+onMounted(() => {
+  loadCustomers();
+});
+
 async function loadCustomers() {
   loading.value = true;
   error.value = "";
@@ -59,10 +63,6 @@ async function loadCustomers() {
 function searchCustomers() {
   loadCustomers();
 }
-
-onMounted(() => {
-  loadCustomers();
-});
 </script>
 
 <template>
@@ -97,7 +97,6 @@ onMounted(() => {
         <InputField label="Search" placeholder="Name, phone, email..." v-model="search" />
 
         <SelectField label="Status" v-model="status">
-          <option value="">All</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </SelectField>
@@ -127,10 +126,6 @@ onMounted(() => {
           </div>
         </template>
 
-        <template #cell-phone="{ row }">
-          {{ row.phone ?? "-" }}
-        </template>
-
         <template #cell-email="{ row }">
           {{ row.email ?? "-" }}
         </template>
@@ -145,7 +140,7 @@ onMounted(() => {
 
         <template #cell-actions="{ row }">
           <div class="flex gap-2">
-            <Button :to="`/customers/${row.id}/edit`" size="icon" title="Edit customer">
+            <Button :to="`/customers/${row.id}/edit`" size="icon" title="Edit Customer">
               <span class="sr-only">Edit customer</span>
               <Pen :size="16" />
             </Button>

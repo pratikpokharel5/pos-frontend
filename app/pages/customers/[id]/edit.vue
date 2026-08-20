@@ -10,9 +10,9 @@ useHead({
 });
 
 const route = useRoute();
-const customerId = String(route.params.customerId ?? "");
+const customerId = String(route.params.id ?? "");
 </script>
 
 <template>
-  <EditCustomerPage :customer-id="customerId" />
+  <EditCustomerPage :id="customerId" />
 </template>

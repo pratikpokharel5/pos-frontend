@@ -1,5 +1,5 @@
 import type { ApiCollection, ApiResource, Query } from "~/types";
-import type { User, UserPayload } from "../types/userTypes";
+import type { User, UserPayload, UserStatusPayload } from "../types/userTypes";
 
 export const usersApi = {
   list: (query?: Query) =>
@@ -14,14 +14,9 @@ export const usersApi = {
       body: payload,
     }),
 
-  update: (id: number, payload: UserPayload) =>
-    apiFetch<ApiResource<User>>(`/users/${id}`, {
-      method: "PUT",
+  updateStatus: (id: number, payload: UserStatusPayload) =>
+    apiFetch<ApiResource<User>>(`/users/${id}/status`, {
+      method: "PATCH",
       body: payload,
-    }),
-
-  archive: (id: number) =>
-    apiFetch<void>(`/users/${id}`, {
-      method: "DELETE",
     }),
 };

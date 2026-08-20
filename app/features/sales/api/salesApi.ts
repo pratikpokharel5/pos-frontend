@@ -13,6 +13,17 @@ export const salesApi = {
       method: "GET",
     }),
 
+  invoice: (id: number) =>
+    apiFetch<ApiResource<Sale>>(`/sales/${id}/invoice`, {
+      method: "GET",
+    }),
+
+  held: (query?: Query) =>
+    apiFetch<ApiCollection<Sale>>("/sales/held", {
+      method: "GET",
+      query: cleanQueryParams(query),
+    }),
+
   create: (payload: SalePayload) =>
     apiFetch<ApiResource<Sale>>("/sales", {
       method: "POST",

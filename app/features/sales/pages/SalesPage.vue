@@ -8,7 +8,7 @@ import type { PaymentMethod, Sale } from "../types/saleTypes";
 
 import SaleInvoice from "../components/SaleInvoice.vue";
 
-type SaleStatusFilter = "" | "completed" | "held" | "voided" | "refunded";
+type SaleStatusFilter = "" | "completed" | "voided" | "refunded";
 type PaymentMethodFilter = "" | PaymentMethod;
 
 const sales = ref<Sale[]>([]);
@@ -19,7 +19,12 @@ const method = ref<PaymentMethodFilter>("");
 const status = ref<SaleStatusFilter>("");
 const loading = ref(true);
 const previewLoading = ref(false);
+const voiding = ref(false);
 const error = ref("");
+const successMessage = ref("");
+const listMessage = ref("");
+const voidDialogOpen = ref(false);
+const selectedVoidSale = ref<Sale | null>(null);
 
 const auth = useAuthStore();
 
@@ -50,9 +55,15 @@ const tableHeaders = [
   },
 ];
 
+onMounted(() => {
+  loadSettings();
+  loadSales();
+});
+
 async function loadSales() {
   loading.value = true;
   error.value = "";
+  listMessage.value = "";
 
   try {
     const response = await salesApi.list({
@@ -63,6 +74,10 @@ async function loadSales() {
     });
 
     sales.value = response.data;
+
+    if (response.meta && response.meta.current_page < response.meta.last_page) {
+      listMessage.value = `Showing the latest ${response.meta.per_page} invoices. Use search filters to find older invoices.`;
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to load sales.";
   } finally {
@@ -93,15 +108,30 @@ async function viewSale(sale: Sale) {
   }
 }
 
-async function voidSale(sale: Sale) {
+function confirmVoidSale(sale: Sale) {
+  selectedVoidSale.value = sale;
   error.value = "";
+  successMessage.value = "";
+  voidDialogOpen.value = true;
+}
 
+async function voidSale() {
+  if (voiding.value || !selectedVoidSale.value) {
+    return;
+  }
+
+  voiding.value = true;
   try {
-    await salesApi.void(sale.id);
+    await salesApi.void(selectedVoidSale.value.id);
+    successMessage.value = `${selectedVoidSale.value.invoice_number} has been voided successfully.`;
     selected.value = null;
+    selectedVoidSale.value = null;
+    voidDialogOpen.value = false;
     await loadSales();
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to void sale.";
+  } finally {
+    voiding.value = false;
   }
 }
 
@@ -117,11 +147,6 @@ function paymentMethodClass(method: string) {
     method !== "cash" && method !== "online" && "bg-warning-soft text-warning",
   );
 }
-
-onMounted(() => {
-  loadSettings();
-  loadSales();
-});
 </script>
 
 <template>
@@ -129,10 +154,20 @@ onMounted(() => {
     <PageHeader
       eyebrow="Sales"
       title="Sales History"
-      description="Search invoices, review payment details, view held sales, reprint invoices, or void a sale."
+      description="Search invoices, review payment details, reprint invoices, or void a sale."
     />
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
+
+    <Alert
+      class="mb-4"
+      auto-dismiss
+      variant="success"
+      :message="successMessage"
+      v-if="successMessage"
+    />
+
+    <Alert class="mb-4" variant="info" :message="listMessage" v-if="listMessage" />
 
     <section class="rounded-app border-line bg-surface shadow-app border">
       <div class="border-line flex justify-between gap-3 border-b p-4 max-md:grid">
@@ -163,7 +198,6 @@ onMounted(() => {
         <SelectField label="Status" v-model="status">
           <option value="">All statuses</option>
           <option value="completed">Completed</option>
-          <option value="held">Held</option>
           <option value="voided">Voided</option>
           <option value="refunded">Refunded</option>
         </SelectField>
@@ -236,7 +270,7 @@ onMounted(() => {
                   size="icon"
                   title="Void sale"
                   :disabled="row.status !== 'completed'"
-                  @click="voidSale(row)"
+                  @click="confirmVoidSale(row)"
                   v-if="auth.isAdmin"
                 >
                   <span class="sr-only">Void sale</span>
@@ -281,5 +315,29 @@ onMounted(() => {
         </div>
       </div>
     </section>
+
+    <Dialog
+      title="Void Sale"
+      subtitle="This marks the sale as voided and keeps it in history."
+      v-model="voidDialogOpen"
+    >
+      <p class="m-0 text-sm leading-relaxed">
+        Are you sure you want to void
+        <strong>{{ selectedVoidSale?.invoice_number }}</strong
+        >?
+      </p>
+
+      <Alert variant="error" class="mt-2">
+        Voided sales remain in history, but they should not be treated as active completed sales.
+      </Alert>
+
+      <template #footer>
+        <Button type="button" :disabled="voiding" @click="voidDialogOpen = false">Cancel</Button>
+
+        <Button type="button" variant="primary" :disabled="voiding" @click="voidSale">
+          {{ voiding ? "Voiding..." : "Confirm" }}
+        </Button>
+      </template>
+    </Dialog>
   </section>
 </template>

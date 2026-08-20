@@ -24,8 +24,7 @@ async function loadHeldSales() {
   error.value = "";
 
   try {
-    const response = await salesApi.list({
-      status: "held",
+    const response = await salesApi.held({
       per_page: 100,
     });
 

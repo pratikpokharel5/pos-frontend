@@ -70,9 +70,10 @@ onMounted(() => {
 watch(
   () => totals.value.grandTotal,
   (grandTotal) => {
-    if (paymentLines.value.length === 1) {
-      // @ts-expect-error
-      paymentLines.value[0].amount = String(grandTotal);
+    const paymentLine = paymentLines.value[0];
+
+    if (paymentLines.value.length === 1 && paymentLine) {
+      paymentLine.amount = String(grandTotal);
     }
   },
 );
@@ -117,6 +118,10 @@ function selectProduct(line: ProductLineForm, productId: string) {
 }
 
 function removeProductLine(id: string) {
+  if (productLines.value.length === 1) {
+    return;
+  }
+
   productLines.value = productLines.value.filter((line) => line.id !== id);
 }
 
@@ -184,6 +189,7 @@ async function saveSale(status: "completed" | "held") {
 
     if (status === "completed") {
       createdSale.value = response.data;
+      success.value = `Sale ${response.data.invoice_number} has been recorded.`;
       return;
     }
 
@@ -224,6 +230,10 @@ function lineDiscountPercent(line: Sale["items"][number]) {
   return String(roundCurrency((numberValue(line.discount_amount) / subtotal) * 100));
 }
 
+function textValue(value: string | null | undefined) {
+  return value ?? "";
+}
+
 function restoreHeldSale(sale: Sale) {
   const formDetails = sale.additional_details as HeldFormDetails | null;
   const heldForm = formDetails?.held_form;
@@ -233,8 +243,12 @@ function restoreHeldSale(sale: Sale) {
   }
 
   customerMode.value = heldForm?.customerMode ?? (sale.customer_id ? "existing" : "walk-in");
-  customerId.value = heldForm?.customerId ?? (sale.customer_id ? String(sale.customer_id) : "");
-  newCustomer.value = heldForm?.newCustomer ?? { name: "", phone: "" };
+  customerId.value =
+    textValue(heldForm?.customerId) || (sale.customer_id ? String(sale.customer_id) : "");
+  newCustomer.value = {
+    name: textValue(heldForm?.newCustomer?.name),
+    phone: textValue(heldForm?.newCustomer?.phone),
+  };
 
   productLines.value = (sale.items ?? []).map((line) => ({
     id: randomReadableId("line-"),
@@ -246,10 +260,16 @@ function restoreHeldSale(sale: Sale) {
     notes: line.notes ?? "",
   }));
 
-  discount.value = heldForm?.discount ?? saleDiscountPercent(sale);
-  taxRate.value = heldForm?.taxRate ?? sale.tax_rate;
+  discount.value = textValue(heldForm?.discount) || saleDiscountPercent(sale);
+  taxRate.value = textValue(heldForm?.taxRate) || sale.tax_rate;
   paymentLines.value = heldForm?.paymentLines?.length
-    ? heldForm.paymentLines
+    ? heldForm.paymentLines.map((payment) => ({
+        id: payment.id ?? randomReadableId("payment-"),
+        method: payment.method ?? "cash",
+        amount: textValue(payment.amount),
+        provider: textValue(payment.provider),
+        reference: textValue(payment.reference),
+      }))
     : (sale.payments ?? []).map((payment) => ({
         id: randomReadableId("payment-"),
         method: payment.method,
@@ -291,10 +311,12 @@ function restoreHeldSale(sale: Sale) {
             Print
           </Button>
 
-          <Button type="button" @click="resetForm">New Sale</Button>
+          <Button type="button" @click="resetForm()">New Sale</Button>
         </div>
       </template>
     </PageHeader>
+
+    <Alert class="mb-4" variant="success" :message="success" auto-dismiss v-if="success" />
 
     <SaleInvoice :sale="createdSale" :settings="settings" />
   </section>
@@ -376,7 +398,9 @@ function restoreHeldSale(sale: Sale) {
               <Button
                 type="button"
                 size="icon"
+                title="Remove item"
                 class="md:col-span-1 md:justify-self-end"
+                :disabled="productLines.length === 1"
                 @click="removeProductLine(line.id)"
               >
                 <span class="sr-only">Remove item</span>
@@ -545,7 +569,7 @@ function restoreHeldSale(sale: Sale) {
 
               <Alert v-if="!taxEnabled">Tax disabled in settings.</Alert>
 
-              <TextareaField label="Notes" :rows="4" v-model="notes" />
+              <Textarea label="Notes" :rows="4" v-model="notes" />
             </div>
           </div>
 

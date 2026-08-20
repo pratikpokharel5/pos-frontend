@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Category } from "~/features/categories/types";
+import type { Category } from "~/features/categories/types/categoryTypes";
 import type { ProductForm } from "../types/productTypes";
 
 defineProps<{
@@ -31,6 +31,6 @@ const form = defineModel<ProductForm>({ required: true });
       </SelectField>
     </div>
 
-    <TextareaField label="Description" :rows="4" v-model="form.description" />
+    <Textarea label="Description" :rows="4" v-model="form.description" />
   </div>
 </template>

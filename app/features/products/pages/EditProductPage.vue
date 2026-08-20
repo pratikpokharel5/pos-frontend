@@ -2,8 +2,8 @@
 import { safeParse } from "valibot";
 import { ArrowLeft, RotateCcw, Save } from "@lucide/vue";
 
-import { categoriesApi } from "~/features/categories/api";
-import type { Category } from "~/features/categories/types";
+import { categoriesApi } from "~/features/categories/api/categoriesApi";
+import type { Category } from "~/features/categories/types/categoryTypes";
 import { productsApi } from "../api/productsApi";
 import { productFormSchema } from "../validations/productValidation";
 import { parseProductId } from "../utils/productUtils";

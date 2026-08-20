@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { BusinessSettings } from "~/features/settings/types/settingsTypes";
-import type { Payment, Sale } from "../types/saleTypes";
+import type { Sale } from "../types/saleTypes";
 
 const props = defineProps<{
   sale: Sale;
   settings?: BusinessSettings | null;
 }>();
-
-const primaryPayment = computed<Payment | null>(() => props.sale.payments?.[0] ?? null);
 
 const taxableAmount = computed(() => {
   const subtotal = numberValue(props.sale.subtotal);
@@ -27,6 +25,13 @@ function paidAmount(value: string | number | null | undefined) {
   return Math.round(Number(value ?? 0)).toLocaleString("en-US", {
     maximumFractionDigits: 0,
   });
+}
+
+function paymentTotal() {
+  return (props.sale.payments ?? []).reduce(
+    (total, payment) => total + numberValue(payment.amount),
+    0,
+  );
 }
 </script>
 
@@ -102,18 +107,17 @@ function paidAmount(value: string | number | null | undefined) {
         <span>NPR {{ invoiceAmount(sale.grand_total) }}</span>
       </div>
 
-      <div class="my-2 space-y-1" v-if="primaryPayment">
-        <div class="flex justify-between">
-          <span>Payment Method</span>
-          <span class="font-medium capitalize">{{ primaryPayment.method }}</span>
-        </div>
-        <div class="flex justify-between" v-if="primaryPayment.provider">
-          <span>Payment Provider</span>
-          <span class="font-medium">{{ primaryPayment.provider }}</span>
+      <div class="my-2 space-y-1" v-if="sale.payments?.length">
+        <div class="flex justify-between" v-for="payment in sale.payments" :key="payment.id">
+          <span class="capitalize">
+            {{ payment.method }}
+            <template v-if="payment.provider"> - {{ payment.provider }}</template>
+          </span>
+          <span>NPR {{ paidAmount(payment.amount) }}</span>
         </div>
         <div class="flex justify-between">
           <span>Amount Paid</span>
-          <span>NPR {{ paidAmount(primaryPayment.amount) }}</span>
+          <span>NPR {{ paidAmount(paymentTotal()) }}</span>
         </div>
       </div>
 

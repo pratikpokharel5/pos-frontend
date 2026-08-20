@@ -14,13 +14,8 @@ const form = defineModel<CustomerForm>({ required: true });
       <InputField label="Email" type="email" inputmode="email" v-model="form.email" />
 
       <InputField label="Address" v-model="form.address" />
-
-      <SelectField label="Status" v-model="form.status">
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </SelectField>
     </div>
 
-    <TextareaField label="Notes" :rows="4" v-model="form.notes" />
+    <Textarea label="Notes" :rows="4" v-model="form.notes" />
   </div>
 </template>

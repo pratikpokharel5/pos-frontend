@@ -15,17 +15,18 @@ export const productFormSchema = v.pipe(
     }
 
     const form = dataset.value;
+    const price = form.price.trim();
 
-    if (form.price.trim() === "") {
+    if (price === "") {
       addIssue({ message: "Selling price is required." });
+    } else if (!Number.isFinite(Number(price))) {
+      addIssue({ message: "Selling price must be a valid number." });
+    } else if (Number(price) < 0) {
+      addIssue({ message: "Selling price cannot be negative." });
     }
 
     if (form.category_id === "") {
       addIssue({ message: "Category is required." });
-    }
-
-    if (numberValue(form.price) < 0) {
-      addIssue({ message: "Selling price cannot be negative." });
     }
   }),
   v.transform((form) => ({

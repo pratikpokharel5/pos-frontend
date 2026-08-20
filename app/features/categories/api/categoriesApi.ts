@@ -1,4 +1,4 @@
-import type { Category, CategoryImportResult, CategoryPayload } from "../types";
+import type { Category, CategoryImportResult, CategoryPayload } from "../types/categoryTypes";
 import type { ApiCollection, ApiResource, Query } from "~/types";
 
 export const categoriesApi = {

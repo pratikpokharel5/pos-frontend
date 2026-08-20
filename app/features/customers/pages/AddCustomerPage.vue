@@ -11,10 +11,12 @@ import CustomerFormFields from "../components/CustomerFormFields.vue";
 const form = ref({ ...emptyCustomerForm });
 const saving = ref(false);
 const error = ref("");
+const successMessage = ref("");
 
 function resetForm() {
   form.value = { ...emptyCustomerForm };
   error.value = "";
+  successMessage.value = "";
 }
 
 async function submit() {
@@ -23,6 +25,7 @@ async function submit() {
   }
 
   error.value = "";
+  successMessage.value = "";
 
   const validation = safeParse(customerFormSchema, form.value);
 
@@ -35,7 +38,9 @@ async function submit() {
 
   try {
     await customersApi.create(validation.output);
-    await navigateTo("/customers");
+
+    form.value = { ...emptyCustomerForm };
+    successMessage.value = "Customer has been created.";
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to save customer.";
   } finally {
@@ -74,6 +79,14 @@ async function submit() {
     </PageHeader>
 
     <ErrorState class="mb-4" :message="error" v-if="error" />
+
+    <Alert
+      class="mb-4"
+      auto-dismiss
+      variant="success"
+      :message="successMessage"
+      v-if="successMessage"
+    />
 
     <section class="rounded-app border-line bg-surface shadow-app max-w-full border">
       <FormFieldset :submitting="saving">

@@ -10,7 +10,7 @@ import {
 } from "@lucide/vue";
 
 import { dashboardApi } from "../api/dashboardApi";
-import type { DashboardSummary } from "../types";
+import type { DashboardSummary } from "../types/dashboardTypes";
 
 import DashboardStat from "../components/DashboardStat.vue";
 import PaymentMethodPill from "../components/PaymentMethodPill.vue";
@@ -19,6 +19,33 @@ import QuickLink from "../components/QuickLink.vue";
 const summary = ref<DashboardSummary | null>(null);
 const loading = ref(true);
 const error = ref("");
+
+const recentSaleTableHeaders = [
+  {
+    key: "invoice_number",
+    label: "Invoice",
+  },
+  {
+    key: "customer",
+    label: "Customer",
+  },
+  {
+    key: "status",
+    label: "Status",
+  },
+  {
+    key: "grand_total",
+    label: "Total",
+  },
+  {
+    key: "sold_at",
+    label: "Date",
+  },
+];
+
+onMounted(() => {
+  loadDashboard();
+});
 
 const averageSale = computed(() => {
   if (!summary.value?.today.invoice_count) {
@@ -40,10 +67,6 @@ async function loadDashboard() {
     loading.value = false;
   }
 }
-
-onMounted(() => {
-  loadDashboard();
-});
 </script>
 
 <template>
@@ -149,41 +172,31 @@ onMounted(() => {
           </div>
 
           <div class="p-4">
-            <div
-              class="rounded-app border-line overflow-hidden border"
+            <DataTable
+              :data="summary.recent_sales"
+              :headers="recentSaleTableHeaders"
               v-if="summary.recent_sales.length"
             >
-              <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-left text-sm">
-                  <thead class="bg-surface-soft text-muted">
-                    <tr>
-                      <th class="border-line border-b px-4 py-3 font-extrabold">Invoice</th>
-                      <th class="border-line border-b px-4 py-3 font-extrabold">Customer</th>
-                      <th class="border-line border-b px-4 py-3 font-extrabold">Status</th>
-                      <th class="border-line border-b px-4 py-3 font-extrabold">Total</th>
-                      <th class="border-line border-b px-4 py-3 font-extrabold">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      class="border-line border-b last:border-b-0"
-                      :key="sale.id"
-                      v-for="sale in summary.recent_sales"
-                    >
-                      <td class="text-text px-4 py-3">
-                        <strong>{{ sale.invoice_number }}</strong>
-                      </td>
-                      <td class="text-text px-4 py-3">{{ sale.customer?.name ?? "Walk-in" }}</td>
-                      <td class="text-text px-4 py-3">
-                        <StatusPill :value="sale.status" />
-                      </td>
-                      <td class="text-text px-4 py-3">{{ money(sale.grand_total) }}</td>
-                      <td class="text-text px-4 py-3">{{ shortDateTime(sale.sold_at) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              <template #cell-invoice_number="{ row }">
+                <strong>{{ row.invoice_number }}</strong>
+              </template>
+
+              <template #cell-customer="{ row }">
+                {{ row.customer?.name ?? "Walk-in" }}
+              </template>
+
+              <template #cell-status="{ row }">
+                <StatusPill :value="row.status" />
+              </template>
+
+              <template #cell-grand_total="{ row }">
+                {{ money(row.grand_total) }}
+              </template>
+
+              <template #cell-sold_at="{ row }">
+                {{ shortDateTime(row.sold_at) }}
+              </template>
+            </DataTable>
 
             <EmptyState
               title="No Recent Sales"
@@ -197,9 +210,9 @@ onMounted(() => {
       <section class="mt-4 grid gap-3.5 md:grid-cols-3">
         <QuickLink
           to="/products"
-          title="Manage Products"
+          title="Products"
           :icon="Boxes"
-          detail="Add or update items staff can sell quickly."
+          detail="View items available for sale."
         />
 
         <QuickLink
